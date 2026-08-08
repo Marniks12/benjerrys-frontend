@@ -18,11 +18,13 @@ const routes = [
     path: '/orders',
     name: 'orders',
     component: OrdersView,
+    meta: { requiresAuth: true },
   },
   {
     path: '/orders/:id',
     name: 'order-detail',
     component: OrderDetailView,
+    meta: { requiresAuth: true },
   },
   {
     path: '/customize',
@@ -34,6 +36,26 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+function isAuthenticated() {
+  return Boolean(localStorage.getItem('authToken'))
+}
+
+router.beforeEach((to, from, next) => {
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+
+  if (requiresAuth && !isAuthenticated()) {
+    next({ name: 'login' })
+    return
+  }
+
+  if (to.name === 'login' && isAuthenticated()) {
+    next({ name: 'orders' })
+    return
+  }
+
+  next()
 })
 
 export default router

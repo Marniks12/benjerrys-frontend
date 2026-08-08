@@ -207,7 +207,7 @@ async function handleDelete(orderId) {
 
 function handleLogout() {
   localStorage.removeItem('authToken')
-  router.push('/login')
+  router.replace('/login')
 }
 
 onMounted(() => {

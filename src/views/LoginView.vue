@@ -78,7 +78,7 @@ async function handleLogin() {
 
     if (data?.token) {
       localStorage.setItem('authToken', data.token)
-      await router.push('/orders')
+      await router.replace('/orders')
       return
     }
 
