@@ -93,6 +93,7 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const isUpdatingId = ref('')
 const allowedStatuses = ['pending', 'processing', 'shipped', 'cancelled']
+const apiBaseUrl = `${import.meta.env.VITE_API_URL}/api`
 
 function getAuthHeaders() {
   const token = localStorage.getItem('authToken')
@@ -138,7 +139,7 @@ async function fetchOrders() {
   errorMessage.value = ''
 
   try {
-    const response = await fetch('http://localhost:3000/api/orders', {
+    const response = await fetch(`${apiBaseUrl}/orders`, {
       headers: getAuthHeaders(),
     })
 
@@ -159,7 +160,7 @@ async function handleStatusChange(orderId, nextStatus) {
   errorMessage.value = ''
 
   try {
-    const response = await fetch(`http://localhost:3000/api/orders/${orderId}/status`, {
+    const response = await fetch(`${apiBaseUrl}/orders/${orderId}/status`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status: nextStatus }),
@@ -187,7 +188,7 @@ async function handleDelete(orderId) {
   errorMessage.value = ''
 
   try {
-    const response = await fetch(`http://localhost:3000/api/orders/${orderId}`, {
+    const response = await fetch(`${apiBaseUrl}/orders/${orderId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     })

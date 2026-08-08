@@ -74,6 +74,7 @@ const router = useRouter()
 const order = ref(null)
 const isLoading = ref(false)
 const errorMessage = ref('')
+const apiBaseUrl = `${import.meta.env.VITE_API_URL}/api`
 
 function getAuthHeaders() {
   const token = localStorage.getItem('authToken')
@@ -125,7 +126,7 @@ async function fetchOrder() {
   order.value = null
 
   try {
-    const response = await fetch(`http://localhost:3000/api/orders/${route.params.id}`, {
+    const response = await fetch(`${apiBaseUrl}/orders/${route.params.id}`, {
       headers: getAuthHeaders(),
     })
 

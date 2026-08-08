@@ -143,6 +143,7 @@ const isSubmitting = ref(false)
 const validationMessage = ref('')
 const submitSuccessMessage = ref('')
 const submitErrorMessage = ref('')
+const apiBaseUrl = `${import.meta.env.VITE_API_URL}/api`
 
 const flavors = [
   { value: 'vanilla', label: 'Vanilla', color: '#f5e3bc' },
@@ -307,7 +308,7 @@ async function handleSubmitOrder() {
   isSubmitting.value = true
 
   try {
-    const response = await fetch('http://localhost:3000/api/orders', {
+    const response = await fetch(`${apiBaseUrl}/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

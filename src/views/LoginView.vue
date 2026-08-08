@@ -51,13 +51,14 @@ const username = ref('')
 const password = ref('')
 const errorMessage = ref('')
 const isLoading = ref(false)
+const apiBaseUrl = `${import.meta.env.VITE_API_URL}/api`
 
 async function handleLogin() {
   errorMessage.value = ''
   isLoading.value = true
 
   try {
-    const response = await fetch('http://localhost:3000/api/auth/login', {
+    const response = await fetch(`${apiBaseUrl}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
