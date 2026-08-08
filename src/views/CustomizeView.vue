@@ -200,23 +200,179 @@ let controls
 let animationFrameId
 let resizeHandler
 let modelGroup = null
+let coneMesh = null
+let scoopBaseMesh = null
 let scoopMeshes = []
+let toppingMeshes = []
+let originalConeMaterial = null
+let scoopMaterialTemplate = null
+let coneMaterialTemplate = null
+let sceneReady = false
 
 function getFlavorColor() {
   return flavors.find((flavor) => flavor.value === selectedFlavor.value)?.color || '#f5e3bc'
 }
 
+function createScoopMaterial(color) {
+  const material = new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.85,
+    metalness: 0.02,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.2,
+  })
+
+  return material
+}
+
+function createConeMaterial(coneType) {
+  const presets = {
+    waffle: { color: '#8b5a2b', roughness: 0.8, metalness: 0.05 },
+    chocolate: { color: '#6b3f1d', roughness: 0.7, metalness: 0.05 },
+    sugar: { color: '#e8d7b4', roughness: 0.9, metalness: 0.02 },
+  }
+
+  const preset = presets[coneType] || presets.waffle
+
+  return new THREE.MeshPhysicalMaterial({
+    color: preset.color,
+    roughness: preset.roughness,
+    metalness: preset.metalness,
+    clearcoat: 0.1,
+  })
+}
+
 function applyCustomization() {
-  const color = new THREE.Color(getFlavorColor())
+  if (!sceneReady || !modelGroup) {
+    return
+  }
+
+  const flavorColor = getFlavorColor()
+  const scoopColor = new THREE.Color(flavorColor)
+  const desiredCount = Math.min(3, Math.max(1, Number(selectedScoops.value) || 1))
 
   scoopMeshes.forEach((mesh, index) => {
-    mesh.visible = index < selectedScoops.value
+    mesh.visible = index < desiredCount
+
     if (mesh.material) {
-      mesh.material.color.set(color)
-      mesh.material.roughness = 0.85
-      mesh.material.metalness = 0.02
+      const material = mesh.material
+      if (material.isMeshPhysicalMaterial || material.isMeshStandardMaterial || material.isMeshBasicMaterial) {
+        material.color.set(scoopColor)
+        if ('roughness' in material) material.roughness = 0.85
+        if ('metalness' in material) material.metalness = 0.02
+        if ('clearcoat' in material) material.clearcoat = 0.2
+        if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.2
+      }
     }
   })
+
+  if (coneMesh?.material) {
+    const material = coneMesh.material
+    const coneMaterial = createConeMaterial(selectedCone.value)
+    material.color.set(coneMaterial.color)
+    material.roughness = coneMaterial.roughness
+    material.metalness = coneMaterial.metalness
+    material.clearcoat = coneMaterial.clearcoat
+    if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.15
+  }
+
+  toppingMeshes.forEach((mesh) => {
+    const shouldShow = selectedTopping.value !== 'none'
+    mesh.visible = shouldShow
+  })
+
+  if (scoopBaseMesh) {
+    const baseHeight = 0.56
+    const verticalGap = 0.3
+
+    scoopMeshes.forEach((mesh, index) => {
+      const y = baseHeight + index * verticalGap
+      mesh.position.set(0, y, 0)
+      mesh.scale.setScalar(1)
+    })
+  }
+
+  if (coneMesh) {
+    coneMesh.position.set(0, 0, 0)
+    coneMesh.scale.setScalar(1)
+  }
+}
+
+function ensureModelParts() {
+  if (!modelGroup) {
+    return
+  }
+
+  const meshCandidates = []
+  modelGroup.traverse((object) => {
+    if (!object.isMesh) {
+      return
+    }
+
+    const name = (object.name || '').toLowerCase()
+    if (name.includes('cone') || name.includes('waffle') || name.includes('sugar') || name.includes('chocolate')) {
+      if (!coneMesh && (name.includes('cone') || name.includes('waffle') || name.includes('sugar') || name.includes('chocolate'))) {
+        coneMesh = object
+      }
+    }
+
+    if (name.includes('scoop') || name.includes('ice') || name.includes('cream')) {
+      meshCandidates.push(object)
+    }
+  })
+
+  const scoopMeshesFromModel = meshCandidates.filter((mesh) => {
+    const name = (mesh.name || '').toLowerCase()
+    return name.includes('scoop') || name.includes('ice') || name.includes('cream')
+  })
+
+  if (scoopMeshesFromModel.length > 0) {
+    scoopBaseMesh = scoopMeshesFromModel[0]
+    scoopMeshes = [scoopBaseMesh]
+
+    if (scoopBaseMesh.geometry) {
+      for (let i = 1; i < 3; i += 1) {
+        const clone = scoopBaseMesh.clone()
+        clone.position.copy(scoopBaseMesh.position)
+        clone.quaternion.copy(scoopBaseMesh.quaternion)
+        clone.scale.copy(scoopBaseMesh.scale)
+        clone.traverse((child) => {
+          if (child.isMesh) {
+            child.material = child.material?.clone?.() || child.material
+          }
+        })
+        modelGroup.add(clone)
+        scoopMeshes.push(clone)
+      }
+    }
+  }
+
+  const toppingNames = ['sprinkle', 'topping', 'chip', 'candy']
+  modelGroup.traverse((object) => {
+    if (!object.isMesh) {
+      return
+    }
+
+    const name = (object.name || '').toLowerCase()
+    if (toppingNames.some((token) => name.includes(token))) {
+      toppingMeshes.push(object)
+    }
+  })
+
+  if (scoopMeshes.length > 0) {
+    scoopMeshes.forEach((mesh) => {
+      mesh.visible = true
+    })
+  }
+
+  if (coneMesh && !originalConeMaterial && coneMesh.material) {
+    originalConeMaterial = coneMesh.material.clone()
+    coneMaterialTemplate = originalConeMaterial
+  }
+
+  if (coneMesh && coneMesh.material) {
+    coneMesh.material = coneMesh.material.clone()
+  }
 }
 
 function fitCameraToModel() {
@@ -378,6 +534,9 @@ onMounted(() => {
     (gltf) => {
       modelGroup = gltf.scene
       scoopMeshes = []
+      toppingMeshes = []
+      coneMesh = null
+      scoopBaseMesh = null
 
       modelGroup.traverse((object) => {
         if (object.isMesh) {
@@ -386,12 +545,13 @@ onMounted(() => {
           if (object.material) {
             object.material = object.material.clone()
           }
-          scoopMeshes.push(object)
         }
       })
 
+      ensureModelParts()
       scene.add(modelGroup)
       fitCameraToModel()
+      sceneReady = true
       applyCustomization()
       resizeRenderer()
     },
@@ -419,7 +579,7 @@ onMounted(() => {
   resizeRenderer()
 })
 
-watch([selectedFlavor, selectedScoops], () => {
+watch([selectedFlavor, selectedScoops, selectedCone, selectedTopping], () => {
   applyCustomization()
 })
 
