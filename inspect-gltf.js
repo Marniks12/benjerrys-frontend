@@ -1,10 +1,14 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import fs from 'fs';
 import path from 'path';
 
 const loader = new GLTFLoader();
 const file = path.resolve('src/assets/models/ice-cream.glb');
 
-loader.load(file, (gltf) => {
+const buffer = fs.readFileSync(file);
+const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+
+loader.parse(arrayBuffer, '', (gltf) => {
   const scene = gltf.scene;
   const meshInfo = [];
 

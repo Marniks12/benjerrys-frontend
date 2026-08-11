@@ -201,11 +201,9 @@ let animationFrameId
 let resizeHandler
 let modelGroup = null
 let coneMesh = null
-let scoopBaseMesh = null
 let scoopMeshes = []
 let toppingMeshes = []
 let originalConeMaterial = null
-let scoopMaterialTemplate = null
 let coneMaterialTemplate = null
 let sceneReady = false
 
@@ -242,6 +240,80 @@ function createConeMaterial(coneType) {
   })
 }
 
+function createProceduralCone() {
+  const coneGeometry = new THREE.ConeGeometry(0.7, 1.55, 28, 1, false)
+  const cone = new THREE.Mesh(coneGeometry, createConeMaterial(selectedCone.value))
+
+  cone.name = 'procedural-cone'
+  cone.castShadow = true
+  cone.receiveShadow = true
+  cone.position.set(0, -0.92, 0)
+  cone.rotation.x = Math.PI
+
+  return cone
+}
+
+function createProceduralToppingGroup() {
+  const toppingGroup = new THREE.Group()
+  toppingGroup.name = 'procedural-topping-group'
+
+  const sprinkleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.16, 6)
+  const sprinkleCount = 24
+  const sprinklePalette = ['#ff8c69', '#ffe066', '#88d8ff', '#ffffff', '#7c4a2e']
+
+  for (let index = 0; index < sprinkleCount; index += 1) {
+    const material = new THREE.MeshPhysicalMaterial({
+      color: sprinklePalette[index % sprinklePalette.length],
+      roughness: 0.8,
+      metalness: 0.01,
+    })
+
+    const sprinkle = new THREE.Mesh(sprinkleGeometry.clone(), material)
+    const angle = (index / sprinkleCount) * Math.PI * 2
+    const radius = 0.22 + (index % 3) * 0.03
+    const height = 1.02 + (index % 4) * 0.02
+
+    sprinkle.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius)
+    sprinkle.rotation.set(Math.PI / 2, 0, angle)
+    sprinkle.castShadow = true
+    sprinkle.receiveShadow = true
+
+    toppingGroup.add(sprinkle)
+  }
+
+  toppingGroup.visible = false
+  return toppingGroup
+}
+
+function applyConeStyle(coneType) {
+  if (!coneMesh?.material) {
+    return
+  }
+
+  const coneMaterial = createConeMaterial(coneType)
+  const material = coneMesh.material
+
+  material.color.set(coneMaterial.color)
+  if ('roughness' in material) material.roughness = coneMaterial.roughness
+  if ('metalness' in material) material.metalness = coneMaterial.metalness
+  if ('clearcoat' in material) material.clearcoat = coneMaterial.clearcoat
+  if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.15
+}
+
+function applyToppingStyle() {
+  if (!toppingMeshes.length) {
+    if (toppingMeshes.group) {
+      toppingMeshes.group.visible = selectedTopping.value !== 'none'
+    }
+    return
+  }
+
+  const shouldShow = selectedTopping.value !== 'none'
+  toppingMeshes.forEach((mesh) => {
+    mesh.visible = shouldShow
+  })
+}
+
 function applyCustomization() {
   if (!sceneReady || !modelGroup) {
     return
@@ -254,47 +326,52 @@ function applyCustomization() {
   scoopMeshes.forEach((mesh, index) => {
     mesh.visible = index < desiredCount
 
-    if (mesh.material) {
-      const material = mesh.material
-      if (material.isMeshPhysicalMaterial || material.isMeshStandardMaterial || material.isMeshBasicMaterial) {
-        material.color.set(scoopColor)
-        if ('roughness' in material) material.roughness = 0.85
-        if ('metalness' in material) material.metalness = 0.02
-        if ('clearcoat' in material) material.clearcoat = 0.2
-        if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.2
-      }
+    if (!mesh.material) {
+      return
+    }
+
+    const material = mesh.material
+    if (material.isMeshPhysicalMaterial || material.isMeshStandardMaterial || material.isMeshBasicMaterial) {
+      material.color.set(scoopColor)
+      if ('roughness' in material) material.roughness = 0.85
+      if ('metalness' in material) material.metalness = 0.02
+      if ('clearcoat' in material) material.clearcoat = 0.2
+      if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.2
     }
   })
 
-  if (coneMesh?.material) {
-    const material = coneMesh.material
-    const coneMaterial = createConeMaterial(selectedCone.value)
-    material.color.set(coneMaterial.color)
-    material.roughness = coneMaterial.roughness
-    material.metalness = coneMaterial.metalness
-    material.clearcoat = coneMaterial.clearcoat
-    if ('clearcoatRoughness' in material) material.clearcoatRoughness = 0.15
-  }
+  applyConeStyle(selectedCone.value)
 
   toppingMeshes.forEach((mesh) => {
     const shouldShow = selectedTopping.value !== 'none'
     mesh.visible = shouldShow
   })
 
-  if (scoopBaseMesh) {
-    const baseHeight = 0.56
-    const verticalGap = 0.3
+  if (toppingMeshes.group) {
+    toppingMeshes.group.visible = selectedTopping.value !== 'none'
+  }
+
+  if (scoopMeshes.length) {
+    const baseHeight = 0.42
+    const verticalGap = 0.28
 
     scoopMeshes.forEach((mesh, index) => {
       const y = baseHeight + index * verticalGap
       mesh.position.set(0, y, 0)
       mesh.scale.setScalar(1)
+      mesh.visible = index < desiredCount
     })
   }
 
   if (coneMesh) {
-    coneMesh.position.set(0, 0, 0)
+    coneMesh.position.set(0, -0.92, 0)
     coneMesh.scale.setScalar(1)
+    coneMesh.visible = true
+  }
+
+  if (selectedTopping.value !== 'none' && toppingMeshes.group) {
+    const toppingHeight = 0.42 + (desiredCount - 1) * 0.28 + 0.46
+    toppingMeshes.group.position.set(0, toppingHeight, 0)
   }
 }
 
@@ -303,47 +380,33 @@ function ensureModelParts() {
     return
   }
 
-  const meshCandidates = []
+  const scoopCandidates = []
   modelGroup.traverse((object) => {
     if (!object.isMesh) {
       return
     }
 
     const name = (object.name || '').toLowerCase()
-    if (name.includes('cone') || name.includes('waffle') || name.includes('sugar') || name.includes('chocolate')) {
-      if (!coneMesh && (name.includes('cone') || name.includes('waffle') || name.includes('sugar') || name.includes('chocolate'))) {
-        coneMesh = object
-      }
-    }
-
     if (name.includes('scoop') || name.includes('ice') || name.includes('cream')) {
-      meshCandidates.push(object)
+      scoopCandidates.push(object)
     }
   })
 
-  const scoopMeshesFromModel = meshCandidates.filter((mesh) => {
-    const name = (mesh.name || '').toLowerCase()
-    return name.includes('scoop') || name.includes('ice') || name.includes('cream')
-  })
+  scoopCandidates.sort((left, right) => left.name.localeCompare(right.name, undefined, { numeric: true }))
+  scoopMeshes = scoopCandidates.slice(0, 3)
 
-  if (scoopMeshesFromModel.length > 0) {
-    scoopBaseMesh = scoopMeshesFromModel[0]
-    scoopMeshes = [scoopBaseMesh]
+  if (scoopMeshes.length > 0 && scoopMeshes.length < 3) {
+    const templateMesh = scoopMeshes[0]
 
-    if (scoopBaseMesh.geometry) {
-      for (let i = 1; i < 3; i += 1) {
-        const clone = scoopBaseMesh.clone()
-        clone.position.copy(scoopBaseMesh.position)
-        clone.quaternion.copy(scoopBaseMesh.quaternion)
-        clone.scale.copy(scoopBaseMesh.scale)
-        clone.traverse((child) => {
-          if (child.isMesh) {
-            child.material = child.material?.clone?.() || child.material
-          }
-        })
-        modelGroup.add(clone)
-        scoopMeshes.push(clone)
-      }
+    for (let index = scoopMeshes.length; index < 3; index += 1) {
+      const clone = templateMesh.clone()
+      clone.traverse((child) => {
+        if (child.isMesh) {
+          child.material = child.material?.clone?.() || child.material
+        }
+      })
+      modelGroup.add(clone)
+      scoopMeshes.push(clone)
     }
   }
 
@@ -359,15 +422,25 @@ function ensureModelParts() {
     }
   })
 
+  if (coneMesh && !originalConeMaterial && coneMesh.material) {
+    originalConeMaterial = coneMesh.material.clone()
+    coneMaterialTemplate = originalConeMaterial
+  }
+
+  if (!coneMesh) {
+    coneMesh = createProceduralCone()
+    modelGroup.add(coneMesh)
+  }
+
+  if (!toppingMeshes.length) {
+    toppingMeshes.group = createProceduralToppingGroup()
+    modelGroup.add(toppingMeshes.group)
+  }
+
   if (scoopMeshes.length > 0) {
     scoopMeshes.forEach((mesh) => {
       mesh.visible = true
     })
-  }
-
-  if (coneMesh && !originalConeMaterial && coneMesh.material) {
-    originalConeMaterial = coneMesh.material.clone()
-    coneMaterialTemplate = originalConeMaterial
   }
 
   if (coneMesh && coneMesh.material) {
@@ -387,7 +460,7 @@ function fitCameraToModel() {
   box.getCenter(center)
 
   const maxDimension = Math.max(size.x, size.y, size.z)
-  const scale = maxDimension > 0 ? 2.2 / maxDimension : 1
+  const scale = maxDimension > 0 ? 1.75 / maxDimension : 1
   modelGroup.scale.setScalar(scale)
 
   const scaledBox = new THREE.Box3().setFromObject(modelGroup)
@@ -397,6 +470,7 @@ function fitCameraToModel() {
   modelGroup.position.x -= scaledCenter.x
   modelGroup.position.y -= scaledBox.min.y
   modelGroup.position.z -= scaledCenter.z
+  modelGroup.position.x += 0.28
 
   camera.position.set(0, 1.4, 4.6)
   camera.lookAt(0, 1, 0)
@@ -536,7 +610,8 @@ onMounted(() => {
       scoopMeshes = []
       toppingMeshes = []
       coneMesh = null
-      scoopBaseMesh = null
+      originalConeMaterial = null
+      coneMaterialTemplate = null
 
       modelGroup.traverse((object) => {
         if (object.isMesh) {
