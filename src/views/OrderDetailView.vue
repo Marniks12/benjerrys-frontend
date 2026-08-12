@@ -48,10 +48,6 @@
             <dd>{{ order.cone }}</dd>
           </div>
           <div>
-            <dt>Scoops</dt>
-            <dd>{{ order.scoops }}</dd>
-          </div>
-          <div>
             <dt>Total price</dt>
             <dd>{{ formatPrice(order.price) }}</dd>
           </div>

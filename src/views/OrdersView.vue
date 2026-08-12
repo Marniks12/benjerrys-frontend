@@ -40,10 +40,6 @@
                 <dd>{{ order.flavor }}</dd>
               </div>
               <div>
-                <dt>Scoops</dt>
-                <dd>{{ order.scoops }}</dd>
-              </div>
-              <div>
                 <dt>Price</dt>
                 <dd>{{ formatPrice(order.price) }}</dd>
               </div>
