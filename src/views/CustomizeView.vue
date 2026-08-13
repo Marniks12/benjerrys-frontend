@@ -504,7 +504,7 @@ function fitCameraToModel() {
   const box = new THREE.Box3().setFromObject(previewStructure.root)
   const size = box.getSize(new THREE.Vector3())
 
-  const targetHeight = 2.2
+  const targetHeight = 1.55
   const scale = size.y > 0 ? targetHeight / size.y : 1
   modelGroup.scale.setScalar(scale)
 
@@ -517,7 +517,7 @@ function fitCameraToModel() {
   modelGroup.position.z = -framedCenter.z
 
   const radius = Math.max(framedSize.x, framedSize.y, framedSize.z)
-  camera.position.set(0, 0, radius * 2.2)
+  camera.position.set(0, 0, radius * 2.7)
   camera.lookAt(0, 0, 0)
   controls.target.set(0, 0, 0)
   controls.update()
