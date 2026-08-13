@@ -447,21 +447,23 @@ function positionScoops() {
     return
   }
 
+  scoopSourceMesh.position.set(0, 0, 0)
+
   const coneBox = new THREE.Box3().setFromObject(coneMesh)
-  const scoopPrototypeBox = new THREE.Box3().setFromObject(scoopSourceMesh)
-  const scoopSize = scoopPrototypeBox.getSize(new THREE.Vector3())
-  const scoopHeight = scoopSize.y || 0.35
+  const scoopBox = new THREE.Box3().setFromObject(scoopSourceMesh)
 
   const coneCenter = coneBox.getCenter(new THREE.Vector3())
-  const firstScoopY = coneBox.max.y + scoopHeight * 0.26
+  const scoopCenter = scoopBox.getCenter(new THREE.Vector3())
+  const scoopSize = scoopBox.getSize(new THREE.Vector3())
 
-  const worldTarget = new THREE.Vector3(
-    coneCenter.x,
-    firstScoopY,
-    coneCenter.z
-  )
-  const localTarget = previewStructure.scoopsGroup.worldToLocal(worldTarget)
-  scoopSourceMesh.position.copy(localTarget)
+  const overlap = scoopSize.y * 0.18
+  const targetScoopMinY = coneBox.max.y - overlap
+
+  const deltaX = coneCenter.x - scoopCenter.x
+  const deltaY = targetScoopMinY - scoopBox.min.y
+  const deltaZ = coneCenter.z - scoopCenter.z
+
+  scoopSourceMesh.position.set(deltaX, deltaY, deltaZ)
 }
 
 function applyCustomization() {
@@ -496,9 +498,11 @@ function fitCameraToModel() {
     return
   }
 
+  modelGroup.position.set(0, 0, 0)
+  modelGroup.scale.setScalar(1)
+
   const box = new THREE.Box3().setFromObject(previewStructure.root)
-  const size = new THREE.Vector3()
-  box.getSize(size)
+  const size = box.getSize(new THREE.Vector3())
 
   const targetHeight = 2.2
   const scale = size.y > 0 ? targetHeight / size.y : 1
@@ -508,14 +512,14 @@ function fitCameraToModel() {
   const framedSize = framedBox.getSize(new THREE.Vector3())
   const framedCenter = framedBox.getCenter(new THREE.Vector3())
 
-  modelGroup.position.x -= framedCenter.x
-  modelGroup.position.y -= framedBox.min.y
-  modelGroup.position.z -= framedCenter.z
+  modelGroup.position.x = -framedCenter.x
+  modelGroup.position.y = -framedCenter.y
+  modelGroup.position.z = -framedCenter.z
 
   const radius = Math.max(framedSize.x, framedSize.y, framedSize.z)
-  camera.position.set(0, framedCenter.y + radius * 0.45, radius * 2.45)
-  camera.lookAt(0, framedCenter.y + framedSize.y * 0.15, 0)
-  controls.target.set(0, framedCenter.y + framedSize.y * 0.15, 0)
+  camera.position.set(0, 0, radius * 2.2)
+  camera.lookAt(0, 0, 0)
+  controls.target.set(0, 0, 0)
   controls.update()
 }
 
@@ -661,9 +665,9 @@ onMounted(() => {
 
       createPreviewStructure()
       scene.add(modelGroup)
-      fitCameraToModel()
       sceneReady = true
       applyCustomization()
+      fitCameraToModel()
       resizeRenderer()
     },
     undefined,
@@ -675,10 +679,9 @@ onMounted(() => {
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
   controls.enablePan = false
-  controls.minDistance = 2.8
-  controls.maxDistance = 8
+  controls.enableZoom = false
   controls.maxPolarAngle = Math.PI * 0.56
-  controls.target.set(0, 1, 0)
+  controls.target.set(0, 0, 0)
 
   resizeHandler = () => {
     resizeRenderer()
