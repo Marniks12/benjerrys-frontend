@@ -181,6 +181,7 @@ let camera
 let controls
 let animationFrameId
 let resizeHandler
+let resizeObserver = null
 let modelGroup = null
 let previewStructure = null
 let coneMesh = null
@@ -513,15 +514,24 @@ function fitCameraToModel() {
   const framedBox = new THREE.Box3().setFromObject(previewStructure.root)
   const framedCenter = framedBox.getCenter(new THREE.Vector3())
 
-  modelGroup.position.x = -framedCenter.x
-  modelGroup.position.y = -framedCenter.y
-  modelGroup.position.z = -framedCenter.z
+  // Shift model to the left (-X direction) by 0.22 units so it is visibly positioned to the left
+  const xLeftShift = 0.22
+  const coneBox = coneMesh ? new THREE.Box3().setFromObject(coneMesh) : framedBox
+  const coneCenter = coneBox.getCenter(new THREE.Vector3())
 
-  // Maintain baseline camera distance based on original 1.55 size, so 20% scale reduction is visually effective and centered
+  modelGroup.position.x = -coneCenter.x - xLeftShift
+  modelGroup.position.y = -framedCenter.y
+  modelGroup.position.z = -coneCenter.z
+
+  // Maintain baseline camera distance based on original 1.55 size, and adjust for aspect ratio so model NEVER gets cut off or zoomed into on narrow screens
   const baselineRadius = size.y > 0 ? (1.55 / size.y) * Math.max(size.x, size.y, size.z) : 1.55
-  camera.position.set(0, 0, baselineRadius * 2.7)
-  camera.lookAt(0, 0, 0)
-  controls.target.set(0, 0, 0)
+  const aspect = camera.aspect || 1
+  const aspectMultiplier = aspect < 1 ? 1 / Math.max(aspect, 0.55) : 1
+  const cameraDistance = baselineRadius * 2.7 * aspectMultiplier
+
+  camera.position.set(-xLeftShift, 0, cameraDistance)
+  camera.lookAt(-xLeftShift, 0, 0)
+  controls.target.set(-xLeftShift, 0, 0)
   controls.update()
 }
 
@@ -531,10 +541,18 @@ function resizeRenderer() {
   }
 
   const { clientWidth, clientHeight } = sceneHost.value
+  if (clientWidth <= 0 || clientHeight <= 0) {
+    return
+  }
+
   renderer.setSize(clientWidth, clientHeight, false)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   camera.aspect = clientWidth / clientHeight
   camera.updateProjectionMatrix()
+
+  if (sceneReady && previewStructure) {
+    fitCameraToModel()
+  }
 }
 
 function animate() {
@@ -690,6 +708,13 @@ onMounted(() => {
   }
   window.addEventListener('resize', resizeHandler)
 
+  if (window.ResizeObserver && sceneHost.value) {
+    resizeObserver = new ResizeObserver(() => {
+      resizeRenderer()
+    })
+    resizeObserver.observe(sceneHost.value)
+  }
+
   animate()
   resizeRenderer()
 })
@@ -700,6 +725,7 @@ watch([selectedFlavor, selectedCone, selectedTopping], () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
+  resizeObserver?.disconnect()
   if (animationFrameId) {
     window.cancelAnimationFrame(animationFrameId)
   }

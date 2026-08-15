@@ -577,16 +577,19 @@ dt {
   cursor: wait;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 960px) {
+  .customize-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .customize-grid {
+    grid-template-columns: 1fr;
+  }
+
   .dashboard-header,
   .order-top,
   .order-actions {
-    flex-direction: column;
-  }
-
-  .customize-hero,
-  .customize-grid {
-    grid-template-columns: 1fr;
     flex-direction: column;
   }
 
@@ -596,6 +599,7 @@ dt {
 
   .scene-host {
     min-height: 420px;
+    height: clamp(380px, 45vh, 520px);
   }
 }
 
@@ -623,6 +627,7 @@ dt {
   }
 
   .scene-host {
-    min-height: 340px;
+    min-height: 320px;
+    height: clamp(300px, 40vh, 400px);
   }
 }
