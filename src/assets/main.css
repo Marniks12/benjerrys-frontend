@@ -171,7 +171,16 @@ body {
   align-items: start;
 }
 
-.scene-card,
+.scene-card {
+  position: sticky;
+  top: 24px;
+  border-radius: 28px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 44px rgba(73, 42, 15, 0.1);
+  backdrop-filter: blur(10px);
+}
+
 .controls-card {
   border-radius: 28px;
   padding: 22px;
@@ -182,7 +191,7 @@ body {
 
 .scene-host {
   width: 100%;
-  min-height: 520px;
+  height: 500px;
   border-radius: 22px;
   overflow: hidden;
   background: linear-gradient(180deg, #fff3e7, #ffe6cf);
@@ -578,6 +587,10 @@ dt {
 }
 
 @media (max-width: 960px) {
+  .scene-card {
+    position: static;
+  }
+
   .customize-hero {
     flex-direction: column;
     align-items: stretch;
@@ -598,8 +611,7 @@ dt {
   }
 
   .scene-host {
-    min-height: 420px;
-    height: clamp(380px, 45vh, 520px);
+    height: 420px;
   }
 }
 
@@ -627,7 +639,6 @@ dt {
   }
 
   .scene-host {
-    min-height: 320px;
-    height: clamp(300px, 40vh, 400px);
+    height: 340px;
   }
 }

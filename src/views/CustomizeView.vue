@@ -500,6 +500,7 @@ function fitCameraToModel() {
     return
   }
 
+  // Reset modelGroup transform first so bounding box calculation is strictly deterministic
   modelGroup.position.set(0, 0, 0)
   modelGroup.scale.setScalar(1)
 
@@ -514,24 +515,20 @@ function fitCameraToModel() {
   const framedBox = new THREE.Box3().setFromObject(previewStructure.root)
   const framedCenter = framedBox.getCenter(new THREE.Vector3())
 
-  // Shift model to the left (-X direction) by 0.22 units so it is visibly positioned to the left
-  const xLeftShift = 0.22
-  const coneBox = coneMesh ? new THREE.Box3().setFromObject(coneMesh) : framedBox
-  const coneCenter = coneBox.getCenter(new THREE.Vector3())
-
-  modelGroup.position.x = -coneCenter.x - xLeftShift
+  // Center model perfectly in 3D world space at (0, 0, 0)
+  modelGroup.position.x = -framedCenter.x
   modelGroup.position.y = -framedCenter.y
-  modelGroup.position.z = -coneCenter.z
+  modelGroup.position.z = -framedCenter.z
 
-  // Maintain baseline camera distance based on original 1.55 size, and adjust for aspect ratio so model NEVER gets cut off or zoomed into on narrow screens
+  // Maintain baseline camera distance based on original 1.55 size, and adjust for aspect ratio so model NEVER gets cut off on narrow screens
   const baselineRadius = size.y > 0 ? (1.55 / size.y) * Math.max(size.x, size.y, size.z) : 1.55
   const aspect = camera.aspect || 1
-  const aspectMultiplier = aspect < 1 ? 1 / Math.max(aspect, 0.55) : 1
+  const aspectMultiplier = aspect < 1 ? 1 / Math.max(aspect, 0.6) : 1
   const cameraDistance = baselineRadius * 2.7 * aspectMultiplier
 
-  camera.position.set(-xLeftShift, 0, cameraDistance)
-  camera.lookAt(-xLeftShift, 0, 0)
-  controls.target.set(-xLeftShift, 0, 0)
+  camera.position.set(0, 0, cameraDistance)
+  camera.lookAt(0, 0, 0)
+  controls.target.set(0, 0, 0)
   controls.update()
 }
 
