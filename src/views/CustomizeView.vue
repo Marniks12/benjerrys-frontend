@@ -504,20 +504,21 @@ function fitCameraToModel() {
   const box = new THREE.Box3().setFromObject(previewStructure.root)
   const size = box.getSize(new THREE.Vector3())
 
-  const targetHeight = 1.55
+  // Reduce model height by 20% (1.55 * 0.8 = 1.24)
+  const targetHeight = 1.24
   const scale = size.y > 0 ? targetHeight / size.y : 1
   modelGroup.scale.setScalar(scale)
 
   const framedBox = new THREE.Box3().setFromObject(previewStructure.root)
-  const framedSize = framedBox.getSize(new THREE.Vector3())
   const framedCenter = framedBox.getCenter(new THREE.Vector3())
 
   modelGroup.position.x = -framedCenter.x
   modelGroup.position.y = -framedCenter.y
   modelGroup.position.z = -framedCenter.z
 
-  const radius = Math.max(framedSize.x, framedSize.y, framedSize.z)
-  camera.position.set(0, 0, radius * 2.7)
+  // Maintain baseline camera distance based on original 1.55 size, so 20% scale reduction is visually effective and centered
+  const baselineRadius = size.y > 0 ? (1.55 / size.y) * Math.max(size.x, size.y, size.z) : 1.55
+  camera.position.set(0, 0, baselineRadius * 2.7)
   camera.lookAt(0, 0, 0)
   controls.target.set(0, 0, 0)
   controls.update()
