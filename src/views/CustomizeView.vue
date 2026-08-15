@@ -189,6 +189,8 @@ let scoopSourceMesh = null
 let toppingMesh = null
 let proceduralSprinklesGroup = null
 let sceneReady = false
+let savedCameraDistance = 4.6
+let savedModelScale = 1
 
 function getFlavorColor() {
   return flavors.find((flavor) => flavor.value === selectedFlavor.value)?.color || '#f5e3bc'
@@ -495,12 +497,13 @@ function applyCustomization() {
   applyToppingStyle(selectedTopping.value)
 }
 
+// fitCameraToModel wordt slechts EEN KEER aangeroepen na het laden van het GLB model.
+// Dit voorkomt dat het model van positie verandert of verdwijnt bij het resizen op andere browsers/apparaten.
 function fitCameraToModel() {
   if (!previewStructure || !camera || !controls) {
     return
   }
 
-  // Reset modelGroup transform first so bounding box calculation is strictly deterministic
   modelGroup.position.set(0, 0, 0)
   modelGroup.scale.setScalar(1)
 
@@ -511,6 +514,7 @@ function fitCameraToModel() {
   const targetHeight = 1.24
   const scale = size.y > 0 ? targetHeight / size.y : 1
   modelGroup.scale.setScalar(scale)
+  savedModelScale = scale
 
   const framedBox = new THREE.Box3().setFromObject(previewStructure.root)
   const framedCenter = framedBox.getCenter(new THREE.Vector3())
@@ -520,18 +524,22 @@ function fitCameraToModel() {
   modelGroup.position.y = -framedCenter.y
   modelGroup.position.z = -framedCenter.z
 
-  // Maintain baseline camera distance based on original 1.55 size, and adjust for aspect ratio so model NEVER gets cut off on narrow screens
+  // Bereken en sla de basislijn camera-afstand op
   const baselineRadius = size.y > 0 ? (1.55 / size.y) * Math.max(size.x, size.y, size.z) : 1.55
-  const aspect = camera.aspect || 1
-  const aspectMultiplier = aspect < 1 ? 1 / Math.max(aspect, 0.6) : 1
-  const cameraDistance = baselineRadius * 2.7 * aspectMultiplier
+  savedCameraDistance = baselineRadius * 2.7
 
-  camera.position.set(0, 0, cameraDistance)
+  // Pas camera-afstand aan op basis van huidige aspect ratio
+  const aspect = camera.aspect || 1
+  const aspectMultiplier = aspect < 1 ? 1 / Math.max(aspect, 0.5) : 1
+
+  camera.position.set(0, 0, savedCameraDistance * aspectMultiplier)
   camera.lookAt(0, 0, 0)
   controls.target.set(0, 0, 0)
   controls.update()
 }
 
+// resizeRenderer past ALLEEN de camera aspect ratio en afstand aan.
+// Het model wordt NIET opnieuw gepositioneerd, zodat het stabiel blijft op alle browsers en apparaten.
 function resizeRenderer() {
   if (!renderer || !camera || !sceneHost.value) {
     return
@@ -547,8 +555,13 @@ function resizeRenderer() {
   camera.aspect = clientWidth / clientHeight
   camera.updateProjectionMatrix()
 
-  if (sceneReady && previewStructure) {
-    fitCameraToModel()
+  // Pas alleen de camera-afstand aan op basis van aspect ratio, ZONDER het model te herpositioneren
+  if (sceneReady && controls) {
+    const aspect = camera.aspect || 1
+    const aspectMultiplier = aspect < 1 ? 1 / Math.max(aspect, 0.5) : 1
+    camera.position.set(0, 0, savedCameraDistance * aspectMultiplier)
+    camera.lookAt(0, 0, 0)
+    controls.update()
   }
 }
 
@@ -642,7 +655,14 @@ onMounted(() => {
   camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
   camera.position.set(0, 1.4, 4.6)
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+  // Gebruik try/catch voor WebGL initialisatie zodat het niet crasht op browsers zonder WebGL support
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'default' })
+  } catch (e) {
+    console.error('WebGL niet beschikbaar:', e)
+    return
+  }
+
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.1
@@ -650,6 +670,23 @@ onMounted(() => {
 
   const host = sceneHost.value
   host.appendChild(renderer.domElement)
+
+  // Herstel de 3D scene automatisch als de browser het WebGL context verliest en terugkrijgt
+  renderer.domElement.addEventListener('webglcontextlost', (event) => {
+    event.preventDefault()
+    if (animationFrameId) {
+      window.cancelAnimationFrame(animationFrameId)
+      animationFrameId = null
+    }
+  })
+
+  renderer.domElement.addEventListener('webglcontextrestored', () => {
+    if (sceneReady) {
+      applyCustomization()
+      resizeRenderer()
+    }
+    animate()
+  })
 
   const ambient = new THREE.AmbientLight('#ffffff', 1.9)
   scene.add(ambient)
@@ -684,11 +721,12 @@ onMounted(() => {
       scene.add(modelGroup)
       sceneReady = true
       applyCustomization()
-      fitCameraToModel()
       resizeRenderer()
+      fitCameraToModel()
     },
     undefined,
-    () => {
+    (error) => {
+      console.error('GLB model laden mislukt:', error)
       resizeRenderer()
     }
   )
