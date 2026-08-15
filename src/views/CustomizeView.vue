@@ -69,10 +69,10 @@
               <h2>Your details</h2>
 
               <label class="input-label" for="customerName">Customer name</label>
-              <input id="customerName" v-model.trim="customerName" class="text-input" type="text" autocomplete="name" />
+              <input id="customerName" v-model.trim="customerName" class="text-input" type="text" autocomplete="name" maxlength="100" />
 
               <label class="input-label" for="email">Email</label>
-              <input id="email" v-model.trim="email" class="text-input" type="email" autocomplete="email" />
+              <input id="email" v-model.trim="email" class="text-input" type="email" autocomplete="email" maxlength="100" />
 
               <label class="input-label" for="address">Address</label>
               <textarea
@@ -81,6 +81,7 @@
                 class="text-input text-area"
                 rows="3"
                 autocomplete="street-address"
+                maxlength="300"
               ></textarea>
             </div>
 

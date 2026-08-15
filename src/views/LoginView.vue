@@ -15,6 +15,7 @@
             v-model.trim="username"
             type="text"
             autocomplete="username"
+            maxlength="50"
             required
           />
         </div>
@@ -26,6 +27,7 @@
             v-model="password"
             type="password"
             autocomplete="current-password"
+            maxlength="100"
             required
           />
         </div>
@@ -72,7 +74,11 @@ async function handleLogin() {
     const data = await response.json()
 
     if (!response.ok) {
-      errorMessage.value = data?.message || 'Login failed. Please check your credentials.'
+      if (response.status === 429) {
+        errorMessage.value = data?.message || 'Too many login attempts. Please try again in 15 minutes.'
+      } else {
+        errorMessage.value = data?.message || 'Login failed. Please check your credentials.'
+      }
       return
     }
 

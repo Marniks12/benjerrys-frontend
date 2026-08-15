@@ -139,6 +139,12 @@ async function fetchOrders() {
       headers: getAuthHeaders(),
     })
 
+    if (response.status === 401) {
+      localStorage.removeItem('authToken')
+      await router.replace('/login')
+      return
+    }
+
     if (!response.ok) {
       throw new Error('Failed to load orders.')
     }
